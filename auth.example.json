@@ -1,3 +1,5 @@
 {
-	"token": "Your Discord bot token here"
+  "token": "Your Discord bot token here",
+  "clientId": "Your Discord application ID here",
+  "guildId": "Your Discord Guild ID here (optional, for testing)"
 }
