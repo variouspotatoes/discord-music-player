@@ -10,6 +10,9 @@ import { REST } from "@discordjs/rest";
 import { ApplicationCommandOptionType, Routes } from "discord-api-types/v9";
 import { Track } from "./music/track";
 import { MusicSubscription } from "./music/subscription";
+import ytdl from "ytdl-core";
+import yts from "yt-search";
+import SpotifyWebApi from "spotify-web-api-node";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
 const { token, clientId, guildId = null } = require("../auth.json");
@@ -54,6 +57,14 @@ const commands = [
     name: "leave",
     description: "Leave the voice channel",
   },
+  {
+    name: "minecraft",
+    description: "Start the Minecraft server",
+},
+{
+    name: "serverstatus",
+    description: "Check if server is up",
+}
 ];
 
 const rest = new REST({ version: "9" }).setToken(token);
@@ -92,7 +103,8 @@ client.on("interactionCreate", async (interaction: Interaction) => {
   if (interaction.commandName === "play") {
     await interaction.deferReply();
     // Extract the video URL from the command
-    const url = interaction.options.get("song")!.value! as string;
+    //song parameter is from command
+    let songinfo = interaction.options.get("song")!.value! as string;
 
     // If a connection to the guild doesn't already exist and the user is in a voice channel, join that channel
     // and create a subscription.
@@ -106,7 +118,7 @@ client.on("interactionCreate", async (interaction: Interaction) => {
           joinVoiceChannel({
             channelId: channel.id,
             guildId: channel.guild.id,
-            adapterCreator: channel.guild.voiceAdapterCreator,
+            adapterCreator: channel.guild.voiceAdapterCreator as any,
           })
         );
         subscription.voiceConnection.on("error", console.warn);
@@ -139,7 +151,14 @@ client.on("interactionCreate", async (interaction: Interaction) => {
 
     try {
       // Attempt to create a Track from the user's video URL
-      const track = await Track.from(url, {
+      //this should check if url or not. if not, search for song instead, and then u can try making the track
+      if (!ytdl.validateURL(songinfo)) {
+        const vids = await yts(songinfo);
+        if (!vids.videos.length) throw Error;
+        songinfo = vids.videos[0].url
+      }
+
+      const track = await Track.from(songinfo, {
         onStart() {
           interaction
             .followUp({ content: "Now playing!", ephemeral: true })
@@ -160,6 +179,7 @@ client.on("interactionCreate", async (interaction: Interaction) => {
       // Enqueue the track and reply a success message to the user
       subscription.enqueue(track);
       await interaction.followUp(`Enqueued **${track.title}**`);
+
     } catch (error) {
       console.warn(error);
       await interaction.followUp(
@@ -218,6 +238,10 @@ client.on("interactionCreate", async (interaction: Interaction) => {
     } else {
       await interaction.reply("Not playing in this server!");
     }
+  } else if (interaction.commandName === "minecraft") {
+      await interaction.reply("mc");
+  } else if (interaction.commandName === "serverstatus" ) {
+      await interaction.reply("status");
   } else {
     await interaction.reply("Unknown command");
   }
